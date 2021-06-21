@@ -1,1 +1,1 @@
-pub mod interval_tree;
+pub mod intervals;
