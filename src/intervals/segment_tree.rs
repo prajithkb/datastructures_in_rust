@@ -1,3 +1,4 @@
+//! The SegmentTree inspired by <https://cp-algorithms.com/data_structures/segment_tree.html>
 use std::{
     fmt::Debug,
     io::{stdout, Write},
@@ -5,16 +6,6 @@ use std::{
 };
 
 use colored::Colorize;
-
-/// This trait is used to implement the `merge` behaviour for a Segment Tree.
-/// The Merge behaviour is used to combine two nodes.
-/// An example usecase is addition.
-/// If a Segment Tree stores the sum of the segments, the merge behaviour is addition
-/// ```ignore
-/// # use datastructures_in_rust::intervals::segment_tree::SegmentTree;
-/// let st :SegmentTree<u32> = SegmentTree::new(&[1, 2, 3], Box::new(|a, b| a + b));
-/// ```
-///
 
 /// The SegmentTree. Inspired by <https://cp-algorithms.com/data_structures/segment_tree.html>
 pub struct SegmentTree<T: Debug + Default + Clone> {
@@ -73,7 +64,7 @@ impl<T: Debug + Default + Clone> SegmentTree<T> {
         }
     }
 
-    /// Queries the value given range.
+    /// Queries the value given range. O (logN) operation
     pub fn query(&self, range: RangeInclusive<usize>) -> Option<T> {
         SegmentTree::query_with_segments(
             &self.segments,

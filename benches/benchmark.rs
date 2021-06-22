@@ -51,9 +51,7 @@ pub fn queries(c: &mut Criterion) {
         query_range(10, MAX),
         query_range(100, MAX),
         query_range(1000, MAX),
-        // query_range(10000, MAX),
-        // query_range(100000, MAX),
-        // query_range(10000000, MAX),
+        query_range(10000, MAX),
     ]
     .iter()
     {

@@ -1,3 +1,5 @@
+//! Brute force O(N) ^2  module over an array
+
 use std::ops::RangeInclusive;
 
 pub struct BruteForce<T: Clone> {
@@ -12,7 +14,7 @@ impl<'a, T: Clone> BruteForce<T> {
             merge_fn,
         }
     }
-
+    /// On^2 query operation
     pub fn query(&self, range: RangeInclusive<usize>) -> Option<T> {
         self.values[range].iter().cloned().reduce(&self.merge_fn)
     }
