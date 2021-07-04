@@ -18,6 +18,13 @@ impl<'a, T: Clone> BruteForce<T> {
     pub fn query(&self, range: RangeInclusive<usize>) -> Option<T> {
         self.values[range].iter().cloned().reduce(&self.merge_fn)
     }
+
+    /// On^2 query operation
+    pub fn update(&mut self, range: RangeInclusive<usize>, value: T) {
+        self.values[range]
+            .iter_mut()
+            .for_each(|v| *v = value.clone());
+    }
 }
 
 #[cfg(test)]
