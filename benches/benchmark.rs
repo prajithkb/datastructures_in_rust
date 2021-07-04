@@ -3,7 +3,7 @@ use std::{ops::RangeInclusive, rc::Rc};
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 use datastructures_in_rust::intervals::{
     brute_force::BruteForce,
-    segment_tree::{DynamicSegmentTreeNode, SegmentTree},
+    segment_tree::{ArrayBasedSegmentTree, DynamicSegmentTree},
 };
 use rand::{thread_rng, Rng};
 
@@ -11,7 +11,7 @@ trait Query<T> {
     fn query(&self, range: RangeInclusive<usize>) -> Option<T>;
 }
 
-impl Query<i32> for SegmentTree<i32> {
+impl Query<i32> for ArrayBasedSegmentTree<i32> {
     fn query(&self, range: RangeInclusive<usize>) -> Option<i32> {
         self.query(range)
     }
@@ -34,16 +34,15 @@ pub fn initializations(c: &mut Criterion) {
     ]
     .iter()
     {
-        group.bench_with_input(BenchmarkId::new("SegmentTree", i.len()), i, |b, i| {
-            b.iter(|| SegmentTree::new(i, Box::new(|a, b| a + b)))
-        });
-        group.bench_with_input(BenchmarkId::new("BruteForce", i.len()), i, |b, i| {
-            b.iter(|| BruteForce::new(i, Box::new(|a, b| a + b)))
-        });
+        group.bench_with_input(
+            BenchmarkId::new("ArrayBasedSegmentTree", i.len()),
+            i,
+            |b, i| b.iter(|| ArrayBasedSegmentTree::new(i, Box::new(|a, b| a + b))),
+        );
         group.bench_with_input(
             BenchmarkId::new("DynamicSegmentTree", i.len()),
             i,
-            |b, i| b.iter(|| DynamicSegmentTreeNode::new_with_values(i, Rc::new(|a, b| a + b))),
+            |b, i| b.iter(|| DynamicSegmentTree::new_with_values(i, Rc::new(|a, b| a + b))),
         );
     }
 }
@@ -51,36 +50,25 @@ pub fn initializations(c: &mut Criterion) {
 pub fn queries(c: &mut Criterion) {
     const MAX: i32 = 1000000;
     let values = (1..=MAX).collect::<Vec<i32>>();
-    let st = SegmentTree::new(&values, Box::new(|a, b| a + b));
-    let bt = BruteForce::new(&values, Box::new(|a, b| a + b));
-    let dst = DynamicSegmentTreeNode::new_with_values(&values, Rc::new(|a, b| a + b));
+    let st = ArrayBasedSegmentTree::new(&values, Box::new(|a, b| a + b));
+    let dst = DynamicSegmentTree::new_with_values(&values, Rc::new(|a, b| a + b));
     let mut group = c.benchmark_group("Interval_Queries");
     for queries in [
         query_range(10, MAX),
         query_range(100, MAX),
         query_range(1000, MAX),
         query_range(10000, MAX),
+        query_range(100000, MAX),
     ]
     .iter()
     {
         group.bench_with_input(
-            BenchmarkId::new("SegmentTree", queries.len()),
+            BenchmarkId::new("ArrayBasedSegmentTree", queries.len()),
             queries,
             |b, queries| {
                 b.iter(|| {
                     queries.iter().for_each(|q| {
                         st.query(q.clone());
-                    })
-                })
-            },
-        );
-        group.bench_with_input(
-            BenchmarkId::new("BruteForce", queries.len()),
-            queries,
-            |b, queries| {
-                b.iter(|| {
-                    queries.iter().for_each(|q| {
-                        bt.query(q.clone());
                     })
                 })
             },
@@ -102,37 +90,26 @@ pub fn queries(c: &mut Criterion) {
 pub fn updates(c: &mut Criterion) {
     const MAX: i32 = 1000000;
     let values = (1..=MAX).collect::<Vec<i32>>();
-    let mut st = SegmentTree::new(&values, Box::new(|a, b| a + b));
-    let mut bt = BruteForce::new(&values, Box::new(|a, b| a + b));
-    let mut dst: DynamicSegmentTreeNode<i32> =
-        DynamicSegmentTreeNode::new(0..=(values.len() - 1), Rc::new(|a, b| a + b));
+    let mut st = ArrayBasedSegmentTree::new(&values, Box::new(|a, b| a + b));
+    let mut dst: DynamicSegmentTree<i32> =
+        DynamicSegmentTree::new(0..=(values.len() - 1), Rc::new(|a, b| a + b));
     let mut group = c.benchmark_group("Interval_Updates");
     for updates in [
         query_range_single_element(10, MAX),
         query_range_single_element(100, MAX),
         query_range_single_element(1000, MAX),
         query_range_single_element(10000, MAX),
+        query_range_single_element(100000, MAX),
     ]
     .iter()
     {
         group.bench_with_input(
-            BenchmarkId::new("SegmentTree", updates.len()),
+            BenchmarkId::new("ArrayBasedSegmentTree", updates.len()),
             updates,
             |b, updates| {
                 b.iter(|| {
                     updates.iter().for_each(|q| {
                         st.update(q.clone(), 100);
-                    })
-                })
-            },
-        );
-        group.bench_with_input(
-            BenchmarkId::new("BruteForce", updates.len()),
-            updates,
-            |b, updates| {
-                b.iter(|| {
-                    updates.iter().for_each(|q| {
-                        bt.update(q.clone(), 100);
                     })
                 })
             },
@@ -178,5 +155,5 @@ fn query_range_single_element(size: usize, max: i32) -> Vec<RangeInclusive<usize
     result
 }
 
-criterion_group!(benches, updates);
+criterion_group!(benches, initializations, queries, updates);
 criterion_main!(benches);

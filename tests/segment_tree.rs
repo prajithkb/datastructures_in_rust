@@ -1,17 +1,21 @@
 use std::ops::RangeInclusive;
+use std::rc::Rc;
 
 use datastructures_in_rust::intervals::brute_force::BruteForce;
-use datastructures_in_rust::intervals::segment_tree::SegmentTree;
+use datastructures_in_rust::intervals::segment_tree::{ArrayBasedSegmentTree, DynamicSegmentTree};
 use rand::{thread_rng, Rng};
 #[test]
 fn query_works() {
     let values = (1..=1000).collect::<Vec<i32>>();
-    let st = SegmentTree::new(&values, Box::new(|a, b| a + b));
+    let st = ArrayBasedSegmentTree::new(&values, Box::new(|a, b| a + b));
+    let dst: DynamicSegmentTree<i32> =
+        DynamicSegmentTree::new_with_values(&values, Rc::new(|a, b| a + b));
     let bt = BruteForce::new(&values, Box::new(|a, b| a + b));
     let queries = query_range(values.len(), 1000);
-    queries
-        .iter()
-        .for_each(|q| assert_eq!(st.query(q.clone()), bt.query(q.clone())));
+    queries.iter().for_each(|q| {
+        assert_eq!(st.query(q.clone()), bt.query(q.clone()));
+        assert_eq!(dst.query(q.clone()), bt.query(q.clone()));
+    });
 }
 
 fn query_range(size: usize, max: i32) -> Vec<RangeInclusive<usize>> {

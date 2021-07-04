@@ -9,7 +9,7 @@ use std::{
 use colored::Colorize;
 
 /// The SegmentTree. Inspired by <https://cp-algorithms.com/data_structures/segment_tree.html>
-pub struct SegmentTree<T: Debug + Default + Clone> {
+pub struct ArrayBasedSegmentTree<T: Debug + Default + Clone> {
     segments: Vec<T>,
     merge_fn: Box<dyn Fn(T, T) -> T>,
     size: usize,
@@ -39,19 +39,19 @@ fn contains(larger: &RangeInclusive<usize>, smaller: &RangeInclusive<usize>) -> 
     *larger.start() <= *smaller.start() && *larger.end() >= *smaller.end()
 }
 
-impl<T: Debug + Default + Clone> SegmentTree<T> {
+impl<T: Debug + Default + Clone> ArrayBasedSegmentTree<T> {
     /// Creates a new instance
     pub fn new(values: &[T], merge_fn: Box<dyn Fn(T, T) -> T>) -> Self {
         let size = values.len();
         let mut segments: Vec<T> = vec![T::default(); 4 * size];
-        SegmentTree::initialize(
+        ArrayBasedSegmentTree::initialize(
             values,
             segments.as_mut(),
             0..=(values.len() - 1),
             0,
             &merge_fn,
         );
-        SegmentTree {
+        ArrayBasedSegmentTree {
             segments,
             merge_fn,
             size,
@@ -73,10 +73,20 @@ impl<T: Debug + Default + Clone> SegmentTree<T> {
             values[index].clone()
         } else {
             let (left, right) = split(start, end);
-            let left =
-                SegmentTree::initialize(values, segments, left, 2 * segment_index + 1, merge_fn);
-            let right =
-                SegmentTree::initialize(values, segments, right, 2 * segment_index + 2, merge_fn);
+            let left = ArrayBasedSegmentTree::initialize(
+                values,
+                segments,
+                left,
+                2 * segment_index + 1,
+                merge_fn,
+            );
+            let right = ArrayBasedSegmentTree::initialize(
+                values,
+                segments,
+                right,
+                2 * segment_index + 2,
+                merge_fn,
+            );
             segments[segment_index] = merge_fn(left, right);
             segments[segment_index].clone()
         }
@@ -84,7 +94,7 @@ impl<T: Debug + Default + Clone> SegmentTree<T> {
 
     /// Queries the value given range. O (logN) operation
     pub fn query(&self, range: RangeInclusive<usize>) -> Option<T> {
-        SegmentTree::query_with_segments(
+        ArrayBasedSegmentTree::query_with_segments(
             &self.segments,
             &range,
             0..=self.size - 1,
@@ -114,14 +124,14 @@ impl<T: Debug + Default + Clone> SegmentTree<T> {
         } else {
             // There is partial overlap, we need to traverse this range to find the proper overlapping ranges.
             let (left, right) = split(cr_start, cr_end);
-            let left = SegmentTree::query_with_segments(
+            let left = ArrayBasedSegmentTree::query_with_segments(
                 segments,
                 query_range,
                 left,
                 2 * index + 1,
                 merge_fn,
             );
-            let right = SegmentTree::query_with_segments(
+            let right = ArrayBasedSegmentTree::query_with_segments(
                 segments,
                 query_range,
                 right,
@@ -197,7 +207,7 @@ impl<T: Debug + Default + Clone> SegmentTree<T> {
     }
 
     pub fn update(&mut self, range: RangeInclusive<usize>, value: T) {
-        SegmentTree::update_with_segments(
+        ArrayBasedSegmentTree::update_with_segments(
             &mut self.segments,
             &range,
             0..=self.size - 1,
@@ -229,7 +239,7 @@ impl<T: Debug + Default + Clone> SegmentTree<T> {
         }
         // partial overlap
         let (left, right) = split(cr_start, cr_end);
-        let left = SegmentTree::update_with_segments(
+        let left = ArrayBasedSegmentTree::update_with_segments(
             segments,
             update_range,
             left,
@@ -237,7 +247,7 @@ impl<T: Debug + Default + Clone> SegmentTree<T> {
             value.clone(),
             merge_fn,
         );
-        let right = SegmentTree::update_with_segments(
+        let right = ArrayBasedSegmentTree::update_with_segments(
             segments,
             update_range,
             right,
@@ -250,16 +260,16 @@ impl<T: Debug + Default + Clone> SegmentTree<T> {
     }
 }
 
-pub struct DynamicSegmentTreeNode<T: Debug + Default + Clone> {
-    left_child: Option<Box<DynamicSegmentTreeNode<T>>>,
-    right_child: Option<Box<DynamicSegmentTreeNode<T>>>,
+pub struct DynamicSegmentTree<T: Debug + Default + Clone> {
+    left_child: Option<Box<DynamicSegmentTree<T>>>,
+    right_child: Option<Box<DynamicSegmentTree<T>>>,
     left: usize,
     right: usize,
     value: T,
     merge_fn: Rc<dyn Fn(T, T) -> T>,
 }
 
-impl<T: Debug + Default + Clone> Debug for DynamicSegmentTreeNode<T> {
+impl<T: Debug + Default + Clone> Debug for DynamicSegmentTree<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_fmt(format_args!(
             "[left={}, right={}, value={:?}]\nleft_child={:?}\nright_child={:?}",
@@ -268,15 +278,15 @@ impl<T: Debug + Default + Clone> Debug for DynamicSegmentTreeNode<T> {
     }
 }
 
-impl<T: Debug + Default + Clone> DynamicSegmentTreeNode<T> {
+impl<T: Debug + Default + Clone> DynamicSegmentTree<T> {
     /// Creates an instance of a Dynamic Segment Tree
     pub fn new(range: RangeInclusive<usize>, merge_fn: Rc<dyn Fn(T, T) -> T>) -> Self {
-        DynamicSegmentTreeNode::inner_new(range, merge_fn)
+        DynamicSegmentTree::inner_new(range, merge_fn)
     }
 
     /// Creates an instance of a Dynamic Segment Tree
     pub fn new_with_values(values: &[T], merge_fn: Rc<dyn Fn(T, T) -> T>) -> Self {
-        let mut dst = DynamicSegmentTreeNode::new(0..=(values.len() - 1), merge_fn);
+        let mut dst = DynamicSegmentTree::new(0..=(values.len() - 1), merge_fn);
         values.iter().enumerate().for_each(|(i, v)| {
             dst.insert(i, v.clone());
         });
@@ -284,7 +294,7 @@ impl<T: Debug + Default + Clone> DynamicSegmentTreeNode<T> {
     }
 
     fn inner_new(range: RangeInclusive<usize>, merge_fn: Rc<dyn Fn(T, T) -> T>) -> Self {
-        DynamicSegmentTreeNode {
+        DynamicSegmentTree {
             left_child: None,
             right_child: None,
             left: *range.start(),
@@ -298,12 +308,12 @@ impl<T: Debug + Default + Clone> DynamicSegmentTreeNode<T> {
         if self.left_child.is_none() && self.left < self.right {
             let mid = (self.left + self.right) / 2;
             // extend the left one
-            self.left_child = Some(Box::new(DynamicSegmentTreeNode::inner_new(
+            self.left_child = Some(Box::new(DynamicSegmentTree::inner_new(
                 self.left..=mid,
                 self.merge_fn.clone(),
             )));
             // extend the left one
-            self.right_child = Some(Box::new(DynamicSegmentTreeNode::inner_new(
+            self.right_child = Some(Box::new(DynamicSegmentTree::inner_new(
                 mid + 1..=self.right,
                 self.merge_fn.clone(),
             )));
@@ -361,7 +371,7 @@ impl<T: Debug + Default + Clone> DynamicSegmentTreeNode<T> {
 
     fn pretty_print_to<W: Write>(&self, write: &mut W) {
         fn pretty_print<T: Debug + Default + Clone, W: Write>(
-            node: &DynamicSegmentTreeNode<T>,
+            node: &DynamicSegmentTree<T>,
             prefix: String,
             last: bool,
             write: &mut W,
@@ -406,7 +416,7 @@ mod tests {
     use std::io::Write;
     use std::ops::RangeInclusive;
 
-    use super::DynamicSegmentTreeNode;
+    use super::DynamicSegmentTree;
 
     fn sum(range: RangeInclusive<usize>, items: &[u32]) -> u32 {
         let v = &items[range];
@@ -475,12 +485,12 @@ mod tests {
 
     fn get_child<T>(
         directions: Vec<LeftOrRight>,
-        node: &DynamicSegmentTreeNode<T>,
-    ) -> Option<&DynamicSegmentTreeNode<T>>
+        node: &DynamicSegmentTree<T>,
+    ) -> Option<&DynamicSegmentTree<T>>
     where
         T: Default + Clone + Debug,
     {
-        let mut result: Option<&DynamicSegmentTreeNode<T>> = Some(node);
+        let mut result: Option<&DynamicSegmentTree<T>> = Some(node);
         directions.into_iter().for_each(|d| {
             result = match d {
                 LeftOrRight::Left => result.unwrap().left_child.as_ref().map(|v| v.as_ref()),
@@ -495,14 +505,14 @@ mod tests {
 
         use crate::intervals::segment_tree::{
             tests::{expect_output, get_child, sum, LeftOrRight},
-            DynamicSegmentTreeNode,
+            DynamicSegmentTree,
         };
 
         #[test]
         fn initializes_correctly() {
             let values: Vec<u32> = (1..=5).collect();
-            let mut dst: DynamicSegmentTreeNode<u32> =
-                DynamicSegmentTreeNode::new(0..=4, Rc::new(|a, b| a + b));
+            let mut dst: DynamicSegmentTree<u32> =
+                DynamicSegmentTree::new(0..=4, Rc::new(|a, b| a + b));
             for (i, v) in values.iter().enumerate() {
                 dst.insert(i, *v);
             }
@@ -617,8 +627,8 @@ mod tests {
         #[test]
         fn query_works() {
             let values: Vec<u32> = (1..=11).collect();
-            let mut dst: DynamicSegmentTreeNode<u32> =
-                DynamicSegmentTreeNode::new(0..=10, Rc::new(|a, b| a + b));
+            let mut dst: DynamicSegmentTree<u32> =
+                DynamicSegmentTree::new(0..=10, Rc::new(|a, b| a + b));
             for (i, v) in values.iter().enumerate() {
                 dst.insert(i, *v);
             }
@@ -631,8 +641,8 @@ mod tests {
         #[test]
         fn pretty_print_works() {
             let values: Vec<u32> = (1..=3).collect();
-            let mut dst: DynamicSegmentTreeNode<u32> =
-                DynamicSegmentTreeNode::new(0..=2, Rc::new(|a, b| a + b));
+            let mut dst: DynamicSegmentTree<u32> =
+                DynamicSegmentTree::new(0..=2, Rc::new(|a, b| a + b));
             for (i, v) in values.iter().enumerate() {
                 dst.insert(i, *v);
             }
@@ -647,19 +657,21 @@ mod tests {
     mod segment_tree {
         use crate::intervals::segment_tree::tests::{expect_output, sum};
 
-        use super::super::SegmentTree;
+        use super::super::ArrayBasedSegmentTree;
 
         #[test]
         fn initializes_correctly() {
             let values: Vec<u32> = (1..=5).collect();
-            let st: SegmentTree<u32> = SegmentTree::new(&values, Box::new(|a, b| a + b));
+            let st: ArrayBasedSegmentTree<u32> =
+                ArrayBasedSegmentTree::new(&values, Box::new(|a, b| a + b));
             assert_eq!(
                 st.segments,
                 vec![15, 6, 9, 3, 3, 4, 5, 1, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
             );
 
             let values: Vec<u32> = (1..=9).collect();
-            let st: SegmentTree<u32> = SegmentTree::new(&values, Box::new(|a, b| a + b));
+            let st: ArrayBasedSegmentTree<u32> =
+                ArrayBasedSegmentTree::new(&values, Box::new(|a, b| a + b));
             assert_eq!(
                 st.segments,
                 vec![
@@ -672,7 +684,8 @@ mod tests {
         #[test]
         fn queries_correctly() {
             let values: Vec<u32> = (1..12).collect();
-            let st: SegmentTree<u32> = SegmentTree::new(&values, Box::new(|a, b| a + b));
+            let st: ArrayBasedSegmentTree<u32> =
+                ArrayBasedSegmentTree::new(&values, Box::new(|a, b| a + b));
             assert_eq!(st.query(0..=5), Some(sum(0..=5, values.as_slice())));
             assert_eq!(st.query(2..=5), Some(sum(2..=5, values.as_slice())));
             assert_eq!(st.query(5..=10), Some(sum(5..=10, values.as_slice())));
@@ -682,7 +695,8 @@ mod tests {
         #[test]
         fn updates_correctly() {
             let mut values: Vec<u32> = (1..=5).collect();
-            let mut st: SegmentTree<u32> = SegmentTree::new(&values, Box::new(|a, b| a + b));
+            let mut st: ArrayBasedSegmentTree<u32> =
+                ArrayBasedSegmentTree::new(&values, Box::new(|a, b| a + b));
             assert_eq!(st.query(0..=4), Some(sum(0..=4, values.as_slice())));
             st.update(0..=0, 1);
             values[0] = 1;
@@ -698,7 +712,8 @@ mod tests {
         #[test]
         fn pretty_print_prints_correctly() {
             let values: Vec<u32> = (1..=3).collect();
-            let st: SegmentTree<u32> = SegmentTree::new(&values, Box::new(|a, b| a + b));
+            let st: ArrayBasedSegmentTree<u32> =
+                ArrayBasedSegmentTree::new(&values, Box::new(|a, b| a + b));
             let mut actual_write_buffer: Vec<u8> = vec![];
             let mut expected_write_buffer: Vec<u8> = vec![];
             st.pretty_print_to(&mut actual_write_buffer);
