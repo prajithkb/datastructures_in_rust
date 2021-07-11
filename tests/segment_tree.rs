@@ -1,8 +1,12 @@
 use std::ops::RangeInclusive;
 use std::rc::Rc;
 
-use datastructures_in_rust::intervals::brute_force::BruteForce;
-use datastructures_in_rust::intervals::segment_tree::{ArrayBasedSegmentTree, DynamicSegmentTree};
+use datastructures_in_rust::intervals::{
+    brute_force::BruteForce,
+    segment_tree::{
+        array_based_segment_tree::ArrayBasedSegmentTree, dynamic_segment_tree::DynamicSegmentTree,
+    },
+};
 use rand::{thread_rng, Rng};
 #[test]
 fn query_works() {

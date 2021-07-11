@@ -3,7 +3,9 @@ use std::{ops::RangeInclusive, rc::Rc};
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 use datastructures_in_rust::intervals::{
     brute_force::BruteForce,
-    segment_tree::{ArrayBasedSegmentTree, DynamicSegmentTree},
+    segment_tree::{
+        array_based_segment_tree::ArrayBasedSegmentTree, dynamic_segment_tree::DynamicSegmentTree,
+    },
 };
 use rand::{thread_rng, Rng};
 

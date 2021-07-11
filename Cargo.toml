@@ -5,6 +5,10 @@ version = "0.1.0"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[features]
+default = ["pretty_print"]
+pretty_print = []
+
 [dependencies]
 # For pretty print
 atoi = "0.4.0"
