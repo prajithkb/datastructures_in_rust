@@ -79,7 +79,7 @@ pub fn queries(c: &mut Criterion) {
             |b, queries| {
                 b.iter(|| {
                     queries.iter().for_each(|q| {
-                        dst.query(q.clone());
+                        dst.query(*q.start() as i64..=*q.end() as i64);
                     })
                 })
             },
@@ -92,7 +92,7 @@ pub fn updates(c: &mut Criterion) {
     let values = (1..=MAX).collect::<Vec<i32>>();
     let mut st = ArrayBasedSegmentTree::new(&values, Box::new(|a, b| a + b));
     let mut dst: DynamicSegmentTree<i32> =
-        DynamicSegmentTree::new(0..=(values.len() - 1), Rc::new(|a, b| a + b));
+        DynamicSegmentTree::new(0..=(values.len() - 1) as i64, Rc::new(|a, b| a + b));
     let mut group = c.benchmark_group("Interval_Updates");
     for updates in [
         query_range_single_element(10, MAX),
@@ -120,7 +120,7 @@ pub fn updates(c: &mut Criterion) {
             |b, updates| {
                 b.iter(|| {
                     updates.iter().for_each(|q| {
-                        dst.update(*q.start(), 100);
+                        dst.update(*q.start() as i64, 100);
                     })
                 })
             },

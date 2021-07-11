@@ -1,4 +1,9 @@
+use datastructures_in_rust::LeetCodeParser;
+
 fn main() {
-    //5,2,6,1
-    // println!("{:?}", Solution::count_smaller(vec![5, 2, 6, 1]))
+    let mut lt = LeetCodeParser::new();
+    let range: Vec<i32> = lt.next_arg_as_vec_of_nums::<i32>().unwrap();
+    let lower: i32 = lt.next_arg_as_num::<i32>().unwrap();
+    let upper: i32 = lt.next_arg_as_num::<i32>().unwrap();
+    println!("{}", Solution::count_range_sum(range, lower, upper));
 }

@@ -263,8 +263,8 @@ impl<T: Debug + Default + Clone> ArrayBasedSegmentTree<T> {
 pub struct DynamicSegmentTree<T: Debug + Default + Clone> {
     left_child: Option<Box<DynamicSegmentTree<T>>>,
     right_child: Option<Box<DynamicSegmentTree<T>>>,
-    left: usize,
-    right: usize,
+    left: i64,
+    right: i64,
     value: T,
     merge_fn: Rc<dyn Fn(T, T) -> T>,
 }
@@ -280,20 +280,20 @@ impl<T: Debug + Default + Clone> Debug for DynamicSegmentTree<T> {
 
 impl<T: Debug + Default + Clone> DynamicSegmentTree<T> {
     /// Creates an instance of a Dynamic Segment Tree
-    pub fn new(range: RangeInclusive<usize>, merge_fn: Rc<dyn Fn(T, T) -> T>) -> Self {
+    pub fn new(range: RangeInclusive<i64>, merge_fn: Rc<dyn Fn(T, T) -> T>) -> Self {
         DynamicSegmentTree::inner_new(range, merge_fn)
     }
 
     /// Creates an instance of a Dynamic Segment Tree
     pub fn new_with_values(values: &[T], merge_fn: Rc<dyn Fn(T, T) -> T>) -> Self {
-        let mut dst = DynamicSegmentTree::new(0..=(values.len() - 1), merge_fn);
+        let mut dst = DynamicSegmentTree::new(0..=((values.len() - 1) as i64), merge_fn);
         values.iter().enumerate().for_each(|(i, v)| {
-            dst.insert(i, v.clone());
+            dst.insert(i as i64, v.clone());
         });
         dst
     }
 
-    fn inner_new(range: RangeInclusive<usize>, merge_fn: Rc<dyn Fn(T, T) -> T>) -> Self {
+    fn inner_new(range: RangeInclusive<i64>, merge_fn: Rc<dyn Fn(T, T) -> T>) -> Self {
         DynamicSegmentTree {
             left_child: None,
             right_child: None,
@@ -306,7 +306,8 @@ impl<T: Debug + Default + Clone> DynamicSegmentTree<T> {
 
     fn extend_if_needed(&mut self) {
         if self.left_child.is_none() && self.left < self.right {
-            let mid = (self.left + self.right) / 2;
+            let delta = (self.right - self.left) / 2;
+            let mid = self.left + delta;
             // extend the left one
             self.left_child = Some(Box::new(DynamicSegmentTree::inner_new(
                 self.left..=mid,
@@ -320,11 +321,11 @@ impl<T: Debug + Default + Clone> DynamicSegmentTree<T> {
         }
     }
 
-    pub fn update(&mut self, index: usize, value: T) {
+    pub fn update(&mut self, index: i64, value: T) {
         self.insert(index, value);
     }
     /// Inserts a value at a given index
-    pub fn insert(&mut self, index: usize, value: T) {
+    pub fn insert(&mut self, index: i64, value: T) {
         // extend if needed.
         self.extend_if_needed();
         // merge the value
@@ -344,7 +345,7 @@ impl<T: Debug + Default + Clone> DynamicSegmentTree<T> {
     }
 
     /// Queries the value of a given range
-    pub fn query(&self, range: RangeInclusive<usize>) -> Option<T> {
+    pub fn query(&self, range: RangeInclusive<i64>) -> Option<T> {
         if range.is_empty() {
             return None;
         }
@@ -514,7 +515,7 @@ mod tests {
             let mut dst: DynamicSegmentTree<u32> =
                 DynamicSegmentTree::new(0..=4, Rc::new(|a, b| a + b));
             for (i, v) in values.iter().enumerate() {
-                dst.insert(i, *v);
+                dst.insert(i as i64, *v);
             }
             let dst = Box::new(dst);
             assert_eq!(dst.value, 15);
@@ -630,7 +631,7 @@ mod tests {
             let mut dst: DynamicSegmentTree<u32> =
                 DynamicSegmentTree::new(0..=10, Rc::new(|a, b| a + b));
             for (i, v) in values.iter().enumerate() {
-                dst.insert(i, *v);
+                dst.insert(i as i64, *v);
             }
             assert_eq!(dst.query(0..=5), Some(sum(0..=5, values.as_slice())));
             assert_eq!(dst.query(2..=5), Some(sum(2..=5, values.as_slice())));
@@ -644,7 +645,7 @@ mod tests {
             let mut dst: DynamicSegmentTree<u32> =
                 DynamicSegmentTree::new(0..=2, Rc::new(|a, b| a + b));
             for (i, v) in values.iter().enumerate() {
-                dst.insert(i, *v);
+                dst.insert(i as i64, *v);
             }
             let mut actual_write_buffer: Vec<u8> = vec![];
             let mut expected_write_buffer: Vec<u8> = vec![];

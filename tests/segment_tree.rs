@@ -14,7 +14,10 @@ fn query_works() {
     let queries = query_range(values.len(), 1000);
     queries.iter().for_each(|q| {
         assert_eq!(st.query(q.clone()), bt.query(q.clone()));
-        assert_eq!(dst.query(q.clone()), bt.query(q.clone()));
+        assert_eq!(
+            dst.query(*q.start() as i64..=*q.end() as i64),
+            bt.query(q.clone())
+        );
     });
 }
 
