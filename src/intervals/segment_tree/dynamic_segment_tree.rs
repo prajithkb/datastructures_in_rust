@@ -1,11 +1,11 @@
 #[cfg(feature = "pretty_print")]
 use colored::Colorize;
-use std::{
-    fmt::Debug,
-    io::{stdout, Write},
-    ops::RangeInclusive,
-    rc::Rc,
-};
+#[cfg(feature = "pretty_print")]
+use std::io::stdout;
+#[cfg(feature = "pretty_print")]
+use std::io::Write;
+
+use std::{fmt::Debug, ops::RangeInclusive, rc::Rc};
 
 use super::merge;
 
@@ -97,7 +97,7 @@ impl<T: Debug + Default + Clone> DynamicSegmentTree<T> {
 
     /// Queries the value of a given range
     pub fn query(&self, range: RangeInclusive<i64>) -> Option<T> {
-        if range.is_empty() {
+        if range.start() > range.end() {
             return None;
         }
         let q_start = *range.start();
