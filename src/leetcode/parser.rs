@@ -1,6 +1,6 @@
 //! Parser, a utility for parsing leet code inputs
 use atoi::FromRadix10SignedChecked;
-use std::{array::IntoIter, collections::VecDeque, fmt::Display, fs::File, io::Read};
+use std::{collections::VecDeque, fmt::Display, fs::File, io::Read};
 
 /// A parser to consume inputs from Leet code
 #[derive(Default)]
@@ -12,12 +12,14 @@ pub struct LeetCodeParser {
 /// There are only two kinds, a single item or a collection - separated by `,` between `[` and `]`
 #[derive(Debug, PartialEq)]
 pub enum Item {
+    /// A single item (String)
     Single(String),
+    /// A collection of strings
     Collection(Vec<Item>),
 }
 
 /// Error during conversion
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum ItemConversionError {
     FailedToConvert,
     InvalidFormat(String),
@@ -30,10 +32,69 @@ impl Display for ItemConversionError {
 }
 
 fn err(index: usize, ch: char, line: &str) -> ItemConversionError {
+    let mut highlighted_string = String::new();
+    for (i, c) in line.char_indices() {
+        if i == index {
+            highlighted_string.push('{');
+            highlighted_string.push(c);
+            highlighted_string.push('}');
+        } else {
+            highlighted_string.push(c);
+        }
+    }
     ItemConversionError::InvalidFormat(format!(
-        "Invalid format at index {} character {} for line {}",
-        index, ch, line
+        "Invalid character `{}` at index {} => {}",
+        ch, index, highlighted_string
     ))
+}
+
+fn add_new_string(ch: char, items: &mut VecDeque<Item>) {
+    items.push_back(Item::Single(ch.to_string()))
+}
+
+fn append_to_collection(
+    items: &mut VecDeque<Item>,
+    index: usize,
+    ch: char,
+    line: &str,
+    number_of_collections: &mut i32,
+) -> Result<(), ItemConversionError> {
+    if let Some(item) = items.pop_back() {
+        match items.back_mut() {
+            Some(Item::Collection(prev_items)) => {
+                if *number_of_collections <= 0 {
+                    return Err(err(index, ch, line));
+                }
+                prev_items.push(item);
+            }
+            _ => return Err(err(index, ch, line)),
+        }
+    } else {
+        return Err(err(index, ch, line));
+    }
+    Ok(())
+}
+
+fn create_or_append_to_string(
+    items: &mut VecDeque<Item>,
+    index: usize,
+    ch: char,
+    line: &str,
+    number_of_collections: &mut i32,
+) -> Result<(), ItemConversionError> {
+    match items.back_mut() {
+        // If the last item is a string, add to it
+        Some(Item::Single(chars)) => chars.push(ch),
+        // If empty, create a new string
+        None => add_new_string(ch, items),
+        Some(Item::Collection(_)) => {
+            if *number_of_collections <= 0 {
+                return Err(err(index, ch, line));
+            }
+            add_new_string(ch, items);
+        }
+    };
+    Ok(())
 }
 
 impl Item {
@@ -41,29 +102,28 @@ impl Item {
         Item::parse(s.to_string())
     }
     /// Converts this instance into a collection of items, the shape of the items are decided by the mapper function
-    fn into_vec<F, B>(self, mapper: F) -> Result<Vec<B>, ItemConversionError>
+    pub fn into_vec<F, B>(self, mapper: F) -> Result<Vec<B>, ItemConversionError>
     where
         F: FnMut(Item) -> Result<B, ItemConversionError>,
     {
-        self.into_iter()?.map(mapper).collect()
+        self.into_iterator()?.map(mapper).collect()
     }
 
     /// Converts this instance into an iterator
-    fn into_iter(self) -> Result<std::vec::IntoIter<Item>, ItemConversionError> {
-        if let Item::Collection(items) = self {
-            Ok(items.into_iter())
-        } else {
-            Err(ItemConversionError::FailedToConvert)
+    pub fn into_iterator(self) -> Result<std::vec::IntoIter<Item>, ItemConversionError> {
+        match self {
+            Item::Collection(items) => Ok(items.into_iter()),
+            _ => Err(ItemConversionError::FailedToConvert),
         }
     }
 
     /// Converts this item into number
-    fn into_num<B: FromRadix10SignedChecked>(self) -> Result<B, ItemConversionError> {
+    pub fn into_num<B: FromRadix10SignedChecked>(self) -> Result<B, ItemConversionError> {
         atoi::atoi::<B>(self.as_bytes()?).ok_or(ItemConversionError::FailedToConvert)
     }
 
     /// Converts the item using the supplied mapper function
-    fn map<F, B>(self, mut mapper: F) -> Result<B, ItemConversionError>
+    pub fn map<F, B>(self, mut mapper: F) -> Result<B, ItemConversionError>
     where
         F: FnMut(Item) -> Result<B, ItemConversionError>,
     {
@@ -71,7 +131,7 @@ impl Item {
     }
 
     /// Converts it into string, fails for a collection
-    fn into_string(self) -> Result<String, ItemConversionError> {
+    pub fn into_string(self) -> Result<String, ItemConversionError> {
         if let Item::Single(item) = self {
             Ok(item)
         } else {
@@ -80,7 +140,7 @@ impl Item {
     }
 
     /// Converts it into slice of bytes (u8), fails for a collection
-    fn as_bytes(&self) -> Result<&[u8], ItemConversionError> {
+    pub fn as_bytes(&self) -> Result<&[u8], ItemConversionError> {
         if let Item::Single(item) = self {
             Ok(item.as_bytes())
         } else {
@@ -93,47 +153,44 @@ impl Item {
         // A stack of collections.
         // We need a stack to keep track of recursive collections
         let mut items: VecDeque<Item> = VecDeque::new();
+        let mut number_of_collections = 0;
         for (i, ch) in line.char_indices() {
+            dbg!(&ch, &items);
             match ch {
                 // Start of a new collection, create a new one and add it to items stack
-                '[' => items.push_back(Item::Collection(vec![])),
+                '[' => {
+                    items.push_back(Item::Collection(vec![]));
+                    number_of_collections += 1;
+                }
+                // Append operation for a collection
                 ']' => {
-                    // end of the current collection
-                    if let Some(item) = items.pop_back() {
-                        if let Some(Item::Collection(items)) = items.back_mut() {
-                            items.push(item);
-                        } else {
-                            return Err(err(i, ch, &line));
-                        }
-                    } else {
-                        return Err(err(i, ch, &line));
-                    }
+                    append_to_collection(&mut items, i, ch, &line, &mut number_of_collections)?;
+                    number_of_collections -= 1;
                 }
-                ',' => {
-                    let v = items.pop_back();
-                    if let Some(item) = v {
-                        if let Item::Collection(items) = items.back_mut().expect("items") {
-                            items.push(item);
-                        } else {
-                            return Err(err(i, ch, &line));
-                        }
-                    } else {
-                        return Err(err(i, ch, &line));
-                    }
-                }
-                _ => {
-                    if let Some(Item::Single(chars)) = items.back_mut() {
-                        chars.push(ch);
-                    } else {
-                        // create a new string and add it
-                        let mut characters = String::new();
-                        characters.push(ch);
-                        items.push_back(Item::Single(characters));
-                    }
-                }
+                // do something to mark this collection as closed.
+                ',' => append_to_collection(&mut items, i, ch, &line, &mut number_of_collections)?,
+                // This is a string
+                _ => create_or_append_to_string(
+                    &mut items,
+                    i,
+                    ch,
+                    &line,
+                    &mut number_of_collections,
+                )?,
             }
         }
-        Ok(items.pop_back().expect("Empty Item"))
+        if number_of_collections > 0 {
+            return Err(ItemConversionError::InvalidFormat(format!(
+                "Collection not closed for {}",
+                line
+            )));
+        }
+        items.pop_back().ok_or_else(|| {
+            ItemConversionError::InvalidFormat(format!(
+                "Invalid format for line={}, cannot be empty",
+                line
+            ))
+        })
     }
 }
 
@@ -208,6 +265,34 @@ mod tests {
     #[test]
     fn invalid_format_fails() {
         let item = Item::from_str("12,23,[1,2]]");
+        assert_eq!(
+            item,
+            Err(ItemConversionError::InvalidFormat(
+                "Invalid character `,` at index 2 => 12{,}23,[1,2]]".into()
+            ))
+        );
+
+        let item = Item::from_str("[12,23,1]2]]");
+        assert_eq!(
+            item,
+            Err(ItemConversionError::InvalidFormat(
+                "Invalid character `2` at index 9 => [12,23,1]{2}]]".into()
+            ))
+        );
+        let item = Item::from_str("[12,23,,]");
+        assert_eq!(
+            item,
+            Err(ItemConversionError::InvalidFormat(
+                "Invalid character `,` at index 7 => [12,23,{,}]".into()
+            ))
+        );
+        let item = Item::from_str("[[]");
+        assert_eq!(
+            item,
+            Err(ItemConversionError::InvalidFormat(
+                "Collection not closed for [[]".into()
+            ))
+        );
     }
 
     #[test]
