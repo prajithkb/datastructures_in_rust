@@ -5,6 +5,7 @@ use datastructures_in_rust::intervals::{
     brute_force::BruteForce,
     segment_tree::{
         array_based_segment_tree::ArrayBasedSegmentTree, dynamic_segment_tree::DynamicSegmentTree,
+        dynamic_segment_tree_with_range_updates::DynamicSegmentTreeWithRangeUpdates,
     },
 };
 use rand::{thread_rng, Rng};
@@ -46,6 +47,16 @@ pub fn initializations(c: &mut Criterion) {
             i,
             |b, i| b.iter(|| DynamicSegmentTree::new_with_values(i, Rc::new(|a, b| a + b))),
         );
+
+        group.bench_with_input(
+            BenchmarkId::new("DynamicSegmentTreeWithRange", i.len()),
+            i,
+            |b, i| {
+                b.iter(|| {
+                    DynamicSegmentTreeWithRangeUpdates::new_with_values(i, Rc::new(|a, b| a + b))
+                })
+            },
+        );
     }
 }
 
@@ -54,6 +65,8 @@ pub fn queries(c: &mut Criterion) {
     let values = (1..=MAX).collect::<Vec<i32>>();
     let st = ArrayBasedSegmentTree::new(&values, Box::new(|a, b| a + b));
     let dst = DynamicSegmentTree::new_with_values(&values, Rc::new(|a, b| a + b));
+    let mut dst_r =
+        DynamicSegmentTreeWithRangeUpdates::new_with_values(&values, Rc::new(|a, b| a + b));
     let mut group = c.benchmark_group("Interval_Queries");
     for queries in [
         query_range(10, MAX),
@@ -86,6 +99,18 @@ pub fn queries(c: &mut Criterion) {
                 })
             },
         );
+
+        group.bench_with_input(
+            BenchmarkId::new("DynamicSegmentTreeWithRange", queries.len()),
+            queries,
+            |b, queries| {
+                b.iter(|| {
+                    queries.iter().for_each(|q| {
+                        dst_r.query(*q.start() as i64..=*q.end() as i64);
+                    })
+                })
+            },
+        );
     }
 }
 
@@ -95,6 +120,11 @@ pub fn updates(c: &mut Criterion) {
     let mut st = ArrayBasedSegmentTree::new(&values, Box::new(|a, b| a + b));
     let mut dst: DynamicSegmentTree<i32> =
         DynamicSegmentTree::new(0..=(values.len() - 1) as i64, Rc::new(|a, b| a + b));
+    let mut dst_r: DynamicSegmentTreeWithRangeUpdates<i32> =
+        DynamicSegmentTreeWithRangeUpdates::new(
+            0..=(values.len() - 1) as i64,
+            Rc::new(|a, b| a + b),
+        );
     let mut group = c.benchmark_group("Interval_Updates");
     for updates in [
         query_range_single_element(10, MAX),
@@ -123,6 +153,17 @@ pub fn updates(c: &mut Criterion) {
                 b.iter(|| {
                     updates.iter().for_each(|q| {
                         dst.update(*q.start() as i64, 100);
+                    })
+                })
+            },
+        );
+        group.bench_with_input(
+            BenchmarkId::new("DynamicSegmentTreeWithRange", updates.len()),
+            updates,
+            |b, updates| {
+                b.iter(|| {
+                    updates.iter().for_each(|q| {
+                        dst_r.update(*q.start() as i64..=*q.start() as i64, 100);
                     })
                 })
             },

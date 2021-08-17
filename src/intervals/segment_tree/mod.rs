@@ -4,6 +4,7 @@ use std::ops::RangeInclusive;
 
 pub mod array_based_segment_tree;
 pub mod dynamic_segment_tree;
+pub mod dynamic_segment_tree_with_range_updates;
 #[inline]
 fn split(start: usize, end: usize) -> (RangeInclusive<usize>, RangeInclusive<usize>) {
     let left_index = start;
@@ -23,7 +24,10 @@ fn merge<T>(left: Option<T>, right: Option<T>, merge_fn: &dyn Fn(T, T) -> T) -> 
 }
 
 #[inline]
-fn contains(larger: &RangeInclusive<usize>, smaller: &RangeInclusive<usize>) -> bool {
+fn contains<T: PartialEq + PartialOrd>(
+    larger: &RangeInclusive<T>,
+    smaller: &RangeInclusive<T>,
+) -> bool {
     // return the current segment if the current range is within the query range
     *larger.start() <= *smaller.start() && *larger.end() >= *smaller.end()
 }

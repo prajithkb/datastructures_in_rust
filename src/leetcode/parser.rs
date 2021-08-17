@@ -155,7 +155,6 @@ impl Item {
         let mut items: VecDeque<Item> = VecDeque::new();
         let mut number_of_collections = 0;
         for (i, ch) in line.char_indices() {
-            dbg!(&ch, &items);
             match ch {
                 // Start of a new collection, create a new one and add it to items stack
                 '[' => {
@@ -195,7 +194,7 @@ impl Item {
 }
 
 impl LeetCodeParser {
-    pub fn new() -> Result<Self, ItemConversionError> {
+    pub fn from_file() -> Result<Self, ItemConversionError> {
         let mut file =
             File::open("/Users/kprajith/workspace/rust/datastructures-in-rust/src/input.txt")
                 .expect("Open file");
