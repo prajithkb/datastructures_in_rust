@@ -3,7 +3,7 @@
 use std::ops::RangeInclusive;
 
 pub struct BruteForce<T: Clone> {
-    values: Vec<T>,
+    pub values: Vec<T>,
     merge_fn: Box<dyn Fn(T, T) -> T>,
 }
 
@@ -19,7 +19,7 @@ impl<'a, T: Clone> BruteForce<T> {
         self.values[range].iter().cloned().reduce(&self.merge_fn)
     }
 
-    /// On^2 query operation
+    /// On^2 update operation
     pub fn update(&mut self, range: RangeInclusive<usize>, value: T) {
         self.values[range]
             .iter_mut()

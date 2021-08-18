@@ -126,9 +126,9 @@ impl<T: Debug + Default + Clone> DynamicSegmentTreeWithRangeUpdates<T> {
             // Take the new value for children
             let new_value = self.pending_child_update.take().unwrap();
             // There are three possibilities now
-            // 1. It is just within left
-            // 2. It is just within right
-            // 3. It is split across left and right
+            // 1. It is just within left range
+            // 2. It is just within right range
+            // 3. It is split across left and right ranges
             if left_child.contains_range(&range) {
                 // 1
                 left_child.update(range, new_value);
@@ -141,9 +141,8 @@ impl<T: Debug + Default + Clone> DynamicSegmentTreeWithRangeUpdates<T> {
                 right_child.update(right_child.left..=up_r_right, new_value);
             }
             let merge_fn = self.merge_fn.as_ref();
+            // If we updated the children, we need to update the value based on the updated children
             self.value = merge_fn(left_child.value.clone(), right_child.value.clone());
-        } else {
-            panic!("impossible case");
         }
     }
 

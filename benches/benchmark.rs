@@ -171,6 +171,57 @@ pub fn updates(c: &mut Criterion) {
     }
 }
 
+pub fn updates_with_range(c: &mut Criterion) {
+    const MAX: i32 = 1000000;
+    let values = (1..=MAX).collect::<Vec<i32>>();
+    let mut st = ArrayBasedSegmentTree::new(&values, Box::new(|a, b| a + b));
+    let mut dst: DynamicSegmentTree<i32> =
+        DynamicSegmentTree::new(0..=(values.len() - 1) as i64, Rc::new(|a, b| a + b));
+    let mut dst_r: DynamicSegmentTreeWithRangeUpdates<i32> =
+        DynamicSegmentTreeWithRangeUpdates::new(
+            0..=(values.len() - 1) as i64,
+            Rc::new(|a, b| a + b),
+        );
+    let mut group = c.benchmark_group("Interval_Updates_With_Range");
+    for updates in [query_range(10, MAX), query_range(100, MAX)].iter() {
+        group.bench_with_input(
+            BenchmarkId::new("ArrayBasedSegmentTree", updates.len()),
+            updates,
+            |b, updates| {
+                b.iter(|| {
+                    updates.iter().for_each(|q| {
+                        st.update(q.clone(), 100);
+                    })
+                })
+            },
+        );
+        group.bench_with_input(
+            BenchmarkId::new("DynamicSegmentTree", updates.len()),
+            updates,
+            |b, updates| {
+                b.iter(|| {
+                    updates.iter().for_each(|q| {
+                        for i in q.clone() {
+                            dst.update(i as i64, 100);
+                        }
+                    })
+                })
+            },
+        );
+        group.bench_with_input(
+            BenchmarkId::new("DynamicSegmentTreeWithRange", updates.len()),
+            updates,
+            |b, updates| {
+                b.iter(|| {
+                    updates.iter().for_each(|q| {
+                        dst_r.update(*q.start() as i64..=*q.end() as i64, 100);
+                    })
+                })
+            },
+        );
+    }
+}
+
 fn query_range(size: usize, max: i32) -> Vec<RangeInclusive<usize>> {
     let mut result = Vec::new();
     let max: usize = max as usize;
@@ -198,5 +249,11 @@ fn query_range_single_element(size: usize, max: i32) -> Vec<RangeInclusive<usize
     result
 }
 
-criterion_group!(benches, initializations, queries, updates);
+criterion_group!(
+    benches,
+    // initializations,
+    // queries,
+    // updates,
+    updates_with_range
+);
 criterion_main!(benches);
